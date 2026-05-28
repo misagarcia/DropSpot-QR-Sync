@@ -1,3 +1,6 @@
+/**
+ * onEdit trigger — runs when the "Generate" checkbox is checked.
+ */
 function onEdit(e) {
   const sheet = e.source.getActiveSheet();
   const range = e.range;
@@ -16,23 +19,28 @@ function onEdit(e) {
   // Skip header row
   if (row === 1) return;
 
-  // Run QR generation for this row only
   generateQRForRow(row);
 }
 
+/**
+ * Main QR generation workflow for a single row.
+ */
 function generateQRForRow(row) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Drop Spots List");
 
-  // -----------------------------
-  // 🔐 CONFIG VALUES (SAFE PLACEHOLDERS)
-  // -----------------------------
-  const folder = DriveApp.getFolderById(CONFIG.QR_OUTPUT_FOLDER_ID);
-  const CLOUD_NAME = CONFIG.CLOUDINARY_CLOUD_NAME;
-  const UPLOAD_PRESET = CONFIG.CLOUDINARY_UPLOAD_PRESET;
-  const API_KEY = CONFIG.CLOUDINARY_API_KEY;
-  const API_SECRET = CONFIG.CLOUDINARY_API_SECRET;
-  // -----------------------------
+  // 🔒 REPLACE WITH YOUR OWN FOLDER ID IN PRIVATE ENVIRONMENT
+  const OUTPUT_FOLDER_ID = "YOUR_DRIVE_FOLDER_ID_HERE";
+  const folder = DriveApp.getFolderById(OUTPUT_FOLDER_ID);
 
+  // 🔒 CLOUDINARY CONFIG — SAFE PLACEHOLDERS FOR PUBLIC REPO
+  const CLOUD_NAME = "YOUR_CLOUD_NAME";
+  const UPLOAD_PRESET = "YOUR_UPLOAD_PRESET";
+
+  // ❗ DO NOT STORE REAL API KEYS IN PUBLIC CODE
+  const API_KEY = "YOUR_API_KEY";
+  const API_SECRET = "YOUR_API_SECRET";
+
+  // Cloudinary signature helper
   function cloudinarySign(params, apiSecret) {
     const sortedKeys = Object.keys(params).sort();
     const toSign = sortedKeys
@@ -98,9 +106,10 @@ function generateQRForRow(row) {
   const labelText = `Site ID# ${binNumber}`;
   const encodedText = encodeURIComponent(labelText);
 
-  // Cachebuster to force Cloudinary to regenerate composite
+  // Cachebuster
   const cb = Date.now();
 
+  // Composite QR with frame + text
   const finalUrl =
     `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/` +
     `l_${publicId},w_300,h_300,c_fit,fl_no_overflow,g_center/` +
@@ -110,72 +119,91 @@ function generateQRForRow(row) {
   const finalBlob = UrlFetchApp.fetch(finalUrl).getBlob().setName(binNumber + ".png");
 
   const pngFile = folder.createFile(finalBlob);
-  createCenteredPDF(pngFile.getId(), binNumber);
+  createSixUpPDF(pngFile.getId(), binNumber);
 }
 
-function createCenteredPDF(pngFileId, binNumber) {
-  // -----------------------------
-  // 🔐 CONFIG VALUES (SAFE PLACEHOLDERS)
-  // -----------------------------
-  const pdfFolder = DriveApp.getFolderById(CONFIG.PDF_OUTPUT_FOLDER_ID);
-  const EMAIL_RECIPIENT = CONFIG.EMAIL_RECIPIENT;
-  // -----------------------------
+/**
+ * Creates a 6‑up (2×3) PDF layout for printing.
+ */
+function createSixUpPDF(pngFileId, binNumber) {
 
-  // Create a temporary Google Doc
+  // 🔒 REPLACE WITH YOUR OWN PDF OUTPUT FOLDER ID IN PRIVATE ENVIRONMENT
+  const PDF_FOLDER_ID = "YOUR_PDF_FOLDER_ID_HERE";
+  const pdfFolder = DriveApp.getFolderById(PDF_FOLDER_ID);
+
   const doc = DocumentApp.create(`QR_${binNumber}_PDF`);
   const docId = doc.getId();
   const body = doc.getBody();
 
-  // Set page size to 8.5 x 11 inches
-  const pageWidth = 8.5 * 72;  // points
-  const pageHeight = 11 * 72;
-  body.setPageWidth(pageWidth);
-  body.setPageHeight(pageHeight);
+  // Margins
+  body.setMarginTop(5);
+  body.setMarginBottom(5);
+  body.setMarginLeft(50);
+  body.setMarginRight(50);
 
-  // Insert a 1x1 table
-  const table = body.appendTable([[""]]);
-  const cell = table.getCell(0, 0);
+  // Clear header/footer if present
+  const header = doc.getHeader();
+  if (header) header.clear();
 
-  // Remove table borders
+  const footer = doc.getFooter();
+  if (footer) footer.clear();
+
+  // Create 3×2 table
+  const table = body.appendTable([
+    ["", ""],
+    ["", ""],
+    ["", ""]
+  ]);
+
   table.setBorderWidth(0);
 
-  // Remove padding
-  cell.setPaddingTop(0);
-  cell.setPaddingBottom(0);
-  cell.setPaddingLeft(0);
-  cell.setPaddingRight(0);
+  // Remove padding + spacing
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 2; c++) {
+      const cell = table.getCell(r, c);
 
-  // Insert a paragraph for vertical spacing
-  const spacer = cell.appendParagraph("");
-  spacer.setSpacingBefore(150);  // adjust this number to fine‑tune vertical centering
+      cell.setPaddingTop(0);
+      cell.setPaddingBottom(0);
+      cell.setPaddingLeft(0);
+      cell.setPaddingRight(0);
 
-  // Insert the image
+      const p = cell.appendParagraph("");
+      p.setSpacingBefore(0);
+      p.setSpacingAfter(0);
+    }
+  }
+
+  // Insert QR images
   const pngFile = DriveApp.getFileById(pngFileId);
   const imageBlob = pngFile.getBlob();
-  const img = cell.appendImage(imageBlob);
 
-  // Center horizontally using paragraph alignment
-  img.getParent().asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 2; c++) {
+      const cell = table.getCell(r, c);
+      const img = cell.appendImage(imageBlob);
 
-  // Save and close
+      img.setWidth(280);
+      img.setHeight(280);
+
+      img.getParent().asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    }
+  }
+
   doc.saveAndClose();
 
-  // Export as PDF
   const pdfBlob = DriveApp.getFileById(docId)
     .getAs("application/pdf")
     .setName(`QR_${binNumber}.pdf`);
 
-  // Save PDF to folder
   pdfFolder.createFile(pdfBlob);
 
-  // Email the PDF
+  // 🔒 REMOVE PERSONAL EMAIL BEFORE PUBLIC UPLOAD
   MailApp.sendEmail({
-    to: EMAIL_RECIPIENT,
+    to: "YOUR_EMAIL_HERE",
     subject: `QR Code PRINT PDF for Bin ${binNumber}`,
-    body: `Here is the generated QR code PDF for bin ${binNumber}.`,
+    body: `Here is the generated 6‑up QR code PDF for bin ${binNumber}.`,
     attachments: [pdfBlob]
   });
 
-  // Delete temporary Doc
   DriveApp.getFileById(docId).setTrashed(true);
 }

@@ -12,6 +12,20 @@ To make this possible, the platform automates everything behind the scenes — Q
 
 ---
 
+## **🚀 What’s New in v1.0.1 (May 27, 2026)**
+The PDF generation workflow has been upgraded to support a 6‑up QR layout (2 columns × 3 rows), replacing the previous single‑QR centered layout.
+
+##### Highlights
+- Six QR codes per page for efficient printing
+- Tightened margins for maximum printable area
+- Improved spacing and alignment
+- Eliminated cropping and two‑page overflow issues
+- Cleaner, more professional print output
+
+This update was requested by leadership to streamline the printing process and reduce manual duplication.
+
+---
+
 ## **📌 Why This System Exists**
 
 The company operates hundreds of donation containers and continues to expand. Until now, they had **no way to know who was donating**, where donations were coming from, or how to build an ongoing relationship with donors.

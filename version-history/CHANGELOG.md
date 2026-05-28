@@ -1,13 +1,37 @@
-# **Changelog**
+# Changelog
 
 All notable changes to this project will be documented in this file.  
 This project follows **Semantic Versioning** (MAJOR.MINOR.PATCH).
 
 ---
 
+## **[1.0.1] – 2026‑05‑27**
+### **Added**
+- Implemented **6‑up QR code layout** in the PDF generation workflow (2×3 grid).
+- Added support for tighter margin control to maximize printable area.
+
+### **Changed**
+- Updated Google Apps Script PDF generation logic to:
+  - Render six identical QR codes on a single page.
+  - Reduce page margins for improved layout density.
+  - Adjust horizontal spacing between columns for a cleaner print layout.
+  - Ensure the entire 6‑up grid fits on a single page without cropping.
+- Improved table structure and spacing removal to eliminate unwanted padding.
+
+### **Fixed**
+- Resolved issue where the PDF occasionally generated as two pages.
+- Eliminated cropping caused by Google Docs’ default margins and spacing.
+- Removed header/footer artifacts that consumed vertical space.
+
+### **Notes**
+- No changes required to Cloudflare Worker or Duda integration.
+- No new environment variables or secrets added.
+- This is a minor feature enhancement and does not introduce breaking changes.
+
+---
+
 ## **[Unreleased]**
 ### **Added**
-- Planned enhancement: Support for generating **4–6 QR codes per PDF** instead of a single centered QR  
 - Planned Constant Contact integration (pending Partner API approval)  
 - Planned OAuth2 token handling for Constant Contact  
 - Planned segmentation of donors by bin ID, plaza name, and city/state  
@@ -53,4 +77,4 @@ This project follows **Semantic Versioning** (MAJOR.MINOR.PATCH).
 - Early Apps Script prototypes  
 - Early Cloudflare Worker prototypes  
 - Early QR generation tests  
-- Early Cloudinary transformation tests  
+- Early Cloudinary transformation tests
