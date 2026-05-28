@@ -12,17 +12,21 @@ To make this possible, the platform automates everything behind the scenes — Q
 
 ---
 
-## **🚀 What’s New in v1.0.1 (May 27, 2026)**
-The PDF generation workflow has been upgraded to support a 6‑up QR layout (2 columns × 3 rows), replacing the previous single‑QR centered layout.
+## **🚀 What’s New in v1.0.2 (May 28, 2026)**  
+The QR generation and print‑ready PDF workflow has been upgraded to support a **2‑up layout**, replacing the previous 6‑up format introduced in v1.0.1. This change aligns our output with the client’s existing poster and signage designs, which already allocate a fixed physical space for QR codes.
 
 ##### Highlights
-- Six QR codes per page for efficient printing
-- Tightened margins for maximum printable area
-- Improved spacing and alignment
-- Eliminated cropping and two‑page overflow issues
-- Cleaner, more professional print output
+- New **2‑up print layout** (one QR per half‑page)
+- High‑resolution Cloudinary pipeline using a **1350×1350 frame**
+- Updated upscale target (**1225px**) for sharper print output
+- Improved text placement (`x_60, y_20`) for precise alignment
+- Sanitized filenames for consistent Drive organization:
+  - `QR_{binNumber}_{businessName}.png`
+  - `QR-Print_{binNumber}_{businessName}.pdf`
+- Batch generator (`generateAllQRCodesAndPDFs`) added for Day‑One onboarding of 100+ locations
+- Sensitive Cloudinary credentials removed from Apps Script for safe GitHub publishing
 
-This update was requested by leadership to streamline the printing process and reduce manual duplication.
+This update ensures our QR assets match the client’s design specifications and maintain consistent print quality across all signage.
 
 ---
 
@@ -106,7 +110,7 @@ The platform is composed of four major subsystems:
    - Generates QR  
    - Sends to Cloudinary  
    - Receives final branded QR  
-   - Creates PDF (soon: 4–6 per page)  
+   - Creates PDF (now 2‑up layout)  
    - Emails PDF to printing team  
    - Saves assets to Drive  
 
@@ -133,6 +137,7 @@ docs/
   duda-integration.md
   constant-contact.md
   troubleshooting.md
+  future-upgrades.md
 
 cloudflare-worker/
   worker.js
@@ -164,7 +169,6 @@ version-history/
 - Uses Constant Contact to send updates  
 - Tracks donor engagement  
 - Builds community around the mission  
-
 
 ---
 

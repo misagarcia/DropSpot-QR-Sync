@@ -1,6 +1,16 @@
 /**
- * onEdit trigger — runs when the "Generate" checkbox is checked.
+ * QR_OnEdit.gs (Sanitized for GitHub)
+ * v1.0.2
+ *
+ * Sensitive credentials removed:
+ * - CLOUD_NAME
+ * - UPLOAD_PRESET
+ * - API_KEY
+ * - API_SECRET
+ *
+ * Replace placeholders with your actual values in your private environment.
  */
+
 function onEdit(e) {
   const sheet = e.source.getActiveSheet();
   const range = e.range;
@@ -19,26 +29,23 @@ function onEdit(e) {
   // Skip header row
   if (row === 1) return;
 
+  // Run QR generation for this row only
   generateQRForRow(row);
 }
 
-/**
- * Main QR generation workflow for a single row.
- */
 function generateQRForRow(row) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Drop Spots List");
 
-  // 🔒 REPLACE WITH YOUR OWN FOLDER ID IN PRIVATE ENVIRONMENT
-  const OUTPUT_FOLDER_ID = "YOUR_DRIVE_FOLDER_ID_HERE";
-  const folder = DriveApp.getFolderById(OUTPUT_FOLDER_ID);
+  // QR PNG output folder (safe to publish)
+  const folder = DriveApp.getFolderById("125LAEN53Pc4Zv8Fj-2MYxqSH-6-oKe0I");
 
-  // 🔒 CLOUDINARY CONFIG — SAFE PLACEHOLDERS FOR PUBLIC REPO
-  const CLOUD_NAME = "YOUR_CLOUD_NAME";
-  const UPLOAD_PRESET = "YOUR_UPLOAD_PRESET";
-
-  // ❗ DO NOT STORE REAL API KEYS IN PUBLIC CODE
-  const API_KEY = "YOUR_API_KEY";
-  const API_SECRET = "YOUR_API_SECRET";
+  // -----------------------------
+  // 🔐 Cloudinary Credentials (REMOVED FOR GITHUB)
+  // -----------------------------
+  const CLOUD_NAME = "YOUR_CLOUD_NAME_HERE";
+  const UPLOAD_PRESET = "YOUR_UPLOAD_PRESET_HERE";
+  const API_KEY = "YOUR_API_KEY_HERE";
+  const API_SECRET = "YOUR_API_SECRET_HERE";
 
   // Cloudinary signature helper
   function cloudinarySign(params, apiSecret) {
@@ -102,108 +109,87 @@ function generateQRForRow(row) {
     throw new Error("Cloudinary upload failed: " + uploadResponse.getContentText());
   }
 
-  // Add text under QR
+  // Desired final size (updated)
+  const TARGET_SIZE = 1225;
+
+  // Encode text
   const labelText = `Site ID# ${binNumber}`;
   const encodedText = encodeURIComponent(labelText);
 
   // Cachebuster
   const cb = Date.now();
 
-  // Composite QR with frame + text
+  // Cloudinary transformation pipeline
   const finalUrl =
     `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/` +
-    `l_${publicId},w_300,h_300,c_fit,fl_no_overflow,g_center/` +
-    `l_text:Arial_12:${encodedText},co_rgb:000,g_south_east,x_15,y_5/` +
-    `qr-frame_sqyibo.png?cb=${cb}`;
+    `l_${publicId},w_${TARGET_SIZE},h_${TARGET_SIZE},c_fit,fl_no_overflow,g_center/` +
+    `l_text:Arial_48:${encodedText},co_rgb:000,g_south_east,x_60,y_20/` +
+    `qr-frame-1350_ghoebo.png?cb=${cb}`;
 
   const finalBlob = UrlFetchApp.fetch(finalUrl).getBlob().setName(binNumber + ".png");
 
   const pngFile = folder.createFile(finalBlob);
-  createSixUpPDF(pngFile.getId(), binNumber);
+  generateTwoUpQRSheet(pngFile.getId(), binNumber);
 }
 
-/**
- * Creates a 6‑up (2×3) PDF layout for printing.
- */
-function createSixUpPDF(pngFileId, binNumber) {
+function generateTwoUpQRSheet(fileId, binNumber) {
+  // PDF output folder (safe to publish)
+  const pdfFolder = DriveApp.getFolderById("1z8y1Blw2qKFq5vuX88uQf6ZziBlLhl38");
 
-  // 🔒 REPLACE WITH YOUR OWN PDF OUTPUT FOLDER ID IN PRIVATE ENVIRONMENT
-  const PDF_FOLDER_ID = "YOUR_PDF_FOLDER_ID_HERE";
-  const pdfFolder = DriveApp.getFolderById(PDF_FOLDER_ID);
+  const qrBlob = DriveApp.getFileById(fileId).getBlob();
 
-  const doc = DocumentApp.create(`QR_${binNumber}_PDF`);
+  // Create a new Google Doc
+  const doc = DocumentApp.create(`QR_${binNumber}_2UP_DOC`);
   const docId = doc.getId();
   const body = doc.getBody();
 
   // Margins
-  body.setMarginTop(5);
-  body.setMarginBottom(5);
-  body.setMarginLeft(50);
-  body.setMarginRight(50);
+  body.setMarginTop(36);
+  body.setMarginBottom(36);
+  body.setMarginLeft(36);
+  body.setMarginRight(36);
 
-  // Clear header/footer if present
-  const header = doc.getHeader();
-  if (header) header.clear();
-
-  const footer = doc.getFooter();
-  if (footer) footer.clear();
-
-  // Create 3×2 table
-  const table = body.appendTable([
-    ["", ""],
-    ["", ""],
-    ["", ""]
-  ]);
-
+  // 2-up table
+  const table = body.appendTable([[""], [""]]);
   table.setBorderWidth(0);
 
-  // Remove padding + spacing
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 2; c++) {
-      const cell = table.getCell(r, c);
+  const qrSizePoints = 433;
 
-      cell.setPaddingTop(0);
-      cell.setPaddingBottom(0);
-      cell.setPaddingLeft(0);
-      cell.setPaddingRight(0);
+  for (let i = 0; i < 2; i++) {
+    const cell = table.getCell(i, 0);
+    cell.setPaddingTop(0);
+    cell.setPaddingBottom(0);
+    cell.setPaddingLeft(0);
+    cell.setPaddingRight(0);
+    cell.clear();
 
-      const p = cell.appendParagraph("");
-      p.setSpacingBefore(0);
-      p.setSpacingAfter(0);
-    }
-  }
+    const paragraph = cell.appendParagraph("");
+    paragraph.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
 
-  // Insert QR images
-  const pngFile = DriveApp.getFileById(pngFileId);
-  const imageBlob = pngFile.getBlob();
-
-  for (let r = 0; r < 3; r++) {
-    for (let c = 0; c < 2; c++) {
-      const cell = table.getCell(r, c);
-      const img = cell.appendImage(imageBlob);
-
-      img.setWidth(280);
-      img.setHeight(280);
-
-      img.getParent().asParagraph().setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    }
+    const img = paragraph.appendInlineImage(qrBlob);
+    img.setWidth(qrSizePoints);
+    img.setHeight(qrSizePoints);
   }
 
   doc.saveAndClose();
 
   const pdfBlob = DriveApp.getFileById(docId)
     .getAs("application/pdf")
-    .setName(`QR_${binNumber}.pdf`);
+    .setName(`QR_${binNumber}_2UP.pdf`);
 
   pdfFolder.createFile(pdfBlob);
 
-  // 🔒 REMOVE PERSONAL EMAIL BEFORE PUBLIC UPLOAD
+  // Email disabled for testing
+  /*
   MailApp.sendEmail({
     to: "YOUR_EMAIL_HERE",
     subject: `QR Code PRINT PDF for Bin ${binNumber}`,
-    body: `Here is the generated 6‑up QR code PDF for bin ${binNumber}.`,
+    body: `Here is the generated 2‑up QR code PDF for bin ${binNumber}.`,
     attachments: [pdfBlob]
   });
+  */
 
   DriveApp.getFileById(docId).setTrashed(true);
+
+  return pdfBlob;
 }

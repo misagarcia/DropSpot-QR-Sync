@@ -3,6 +3,35 @@
 All notable changes to this project will be documented in this file.  
 This project follows **Semantic Versioning** (MAJOR.MINOR.PATCH).
 
+
+---
+
+## **[1.0.2] – 2026‑05‑28**
+### **Added**
+- New **2‑up print layout** to replace the previous 6‑up format, aligning with client design specifications.
+- High‑resolution **Cloudinary composite pipeline** using the new 1350×1350 frame asset.
+- Sanitized filename generation for both PNG and PDF outputs:
+  - `QR_{binNumber}_{businessName}.png`
+  - `QR-Print_{binNumber}_{businessName}.pdf`
+- Batch processing script (`generateAllQRCodesAndPDFs`) for Day‑One onboarding of 100+ locations.
+
+### **Changed**
+- Updated QR transformation workflow to use **1225px upscale target** for improved print clarity.
+- Adjusted text overlay placement (`x_60, y_20`) for precise alignment within the new frame.
+- Replaced all sensitive Cloudinary credentials in Apps Script with environment‑safe placeholders for GitHub publishing.
+- Improved naming conventions and sanitization logic for consistent, safe file output.
+
+### **Fixed**
+- Resolved layout distortion caused by mixing 300px and 1350px assets by adopting a unified high‑resolution frame.
+- Eliminated text stretching and misalignment issues by recalibrating overlay scaling and anchor points.
+
+### **Notes**
+- This update affects only the **Google Apps Script** components (QR generation + PDF creation).
+- Cloudflare Worker and Duda integration remain unchanged.
+- This is a minor feature enhancement; version bump:
+  - **v1.0.1 → v1.0.2**
+
+
 ---
 
 ## **[1.0.1] – 2026‑05‑27**
