@@ -1,186 +1,220 @@
-# **Cloudflare Worker — Form Processing API**
+# Cloudflare Workers — API Layer for the DropSpot Automation Platform
 
-The Cloudflare Worker acts as the backend API for the DropSpot Automation Platform. It receives form submissions from the Duda website, validates and normalizes the data, logs the request, and prepares the payload for Constant Contact. Once Constant Contact Partner API approval is granted, the Worker will also handle authenticated contact creation.
+This folder contains the Cloudflare Workers that serve as the serverless API layer for the DropSpot Automation Platform. These Workers sit between the Duda website and backend systems (Google Apps Script + Constant Contact), ensuring reliable, fast, and secure data delivery.
 
-This folder contains the Worker code and related documentation.
+As of **v1.1.0**, the platform uses **two independent Workers**, each dedicated to a different workflow:
 
----
+1. **Donor Intake Worker** — handles donor submissions  
+2. **Location Onboarding Worker** — handles new DropSpot creation  
 
-## **📌 Purpose of the Worker**
-
-The Worker serves as the central processing layer between:
-
-- **Duda (front‑end form)**  
-- **Constant Contact (email marketing)**  
-- **Internal logging and debugging**  
-
-Its responsibilities include:
-
-- Accepting POST requests from Duda  
-- Parsing the form submission payload  
-- Normalizing field names  
-- Validating required fields  
-- Preparing the Constant Contact payload  
-- Logging all activity  
-- Returning structured JSON responses  
-
-The Worker ensures that every donor submission is handled consistently and safely.
+Both Workers are optimized for Duda’s webhook behavior and built for low‑latency, high‑reliability processing.
 
 ---
 
-## **📁 Files in This Folder**
+## ⭐ Why Two Workers?
 
-### **`worker.js`**
-The main Cloudflare Worker script.  
-Handles:
+The platform supports two distinct pipelines, each with different payloads, validation rules, and downstream systems.
 
-- POST request routing  
-- JSON parsing  
-- Field normalization  
-- Validation  
-- Logging  
-- Constant Contact payload construction  
-- (Future) OAuth2 authentication  
-- (Future) Contact creation API calls  
+### 1. Donor Intake Workflow
+- Triggered when a donor scans a QR code  
+- Sends donor info to Constant Contact  
+- Performs field normalization + validation  
+- Uses Partner API JWT authentication  
+- Adds donors to a specific Constant Contact list  
+- Supports custom field mapping  
 
-### **`README.md`**
+### 2. New Location Onboarding Workflow
+- Triggered when staff submit the “Add New DropSpot” form  
+- Sends location metadata to Google Apps Script  
+- Must return 200 OK instantly to prevent Duda retry loops  
+- Forwards raw JSON without modification  
+
+Because these workflows have different responsibilities, they are implemented as two separate Workers.
+
+---
+
+# 📁 Files in This Folder
+
+## `donor-worker.js`
+
+Handles donor submissions from the QR‑driven Duda form.
+
+### Responsibilities
+- Accept POST requests from Duda  
+- Parse normalized JSON payload  
+- Validate required fields (email, bin ID, etc.)  
+- Map fields to Constant Contact standard + custom fields  
+- Add donors to a specific Constant Contact list  
+- Store phone numbers under `phone_numbers[]`  
+- Manage Partner API JWT token minting + KV caching  
+- Log inbound + outbound requests  
+- Return structured JSON responses  
+
+### Current Constant Contact Mapping
+
+**Standard fields**
+
+- `first_name`  
+- `last_name`  
+- `email_address.address`  
+- `phone_numbers[].phone_number` (stored as `kind: "mobile"`)
+
+**Custom fields**
+
+| Duda Field     | CC Custom Field ID                   |
+|----------------|--------------------------------------|
+| Message        | b592d3da-39e1-11f1-bf9e-02420a320002 |
+| bin_id         | 3b45f284-459d-11f1-a9c4-02420a320002 |
+| location_name  | a2e8aae8-39e1-11f1-8be6-02420a320002 |
+| city_state     | f659fab4-4e50-11f1-a91b-02420a320003 |
+
+**List membership**
+
+All donors are added to:
+
+    dfc5bc9c-4e51-11f1-af7d-02420a320003
+
+### SMS Channel Note
+
+Constant Contact’s API currently does **not** allow SMS channel activation via API.  
+Attempts to populate `sms_channel` result in validation errors, even when providing all required fields.
+
+For now, phone numbers are stored only under:
+
+    phone_numbers[]
+
+A future update may add SMS opt‑in support once Constant Contact confirms API availability.
+
+---
+
+## `location-worker.js`
+
+Handles new DropSpot onboarding submissions from the staff‑only Duda form.
+
+### Responsibilities
+- Accept POST requests from Duda  
+- Immediately return 200 OK to prevent Duda retry loops  
+- Forward raw JSON to Google Apps Script  
+- Log inbound + outbound requests  
+- Return structured JSON including Apps Script response  
+
+This Worker powers the location onboarding pipeline.
+
+---
+
+## `README.md`
+
 This documentation file.
 
 ---
 
-## **🔄 How the Worker Fits Into the System**
+# 🔄 How the Workers Fit Into the System
 
-```
-QR Code →
-  URL with parameters →
-    Duda Form →
-      Webhook POST →
-        Cloudflare Worker →
+## Donor Intake Pipeline
+
+    QR Code →
+      Duda Donor Form →
+        Donor Worker →
           Normalize + Validate →
-            (Future) Constant Contact API →
+            Constant Contact Partner API →
               Logging + Response
-```
 
-The Worker is the glue between the donor-facing form and the marketing system.
+## New Location Onboarding Pipeline
 
----
-
-## **🧠 What the Worker Does Today (Current State)**
-
-### ✔ Receives Duda form submissions  
-Duda sends form data as an array of `{ field, value }` objects.
-
-### ✔ Normalizes the data  
-The Worker converts Duda’s structure into a clean JSON object:
-
-```json
-{
-  "firstName": "John",
-  "email": "john@example.com",
-  "bin_id": "42754",
-  "city_state": "Yorktown Heights, NY"
-}
-```
-
-### ✔ Validates required fields  
-Ensures:
-
-- Email exists  
-- Email is valid  
-- Bin ID exists  
-- City/state exists  
-
-### ✔ Prepares Constant Contact payload  
-The Worker builds the correct JSON structure for Constant Contact, but **does not send it yet**.
-
-### ✔ Logs everything  
-For debugging and auditing.
-
-### ✔ Returns a structured JSON response  
-Duda receives a clean success or error message.
+    Duda Staff Form →
+      Location Worker →
+        Instant 200 OK →
+          Forward JSON →
+            WebFormEndpoint.gs →
+              Row Creation + QR Automation →
+                Email Delivery
 
 ---
 
-## **🚧 What the Worker Will Do Once Constant Contact Approves API Access**
+# 🧠 What Each Worker Does Today
 
-### 🔜 OAuth2 Authentication  
-The Worker will:
+## Donor Worker
 
-- Store OAuth credentials in environment variables  
-- Refresh tokens automatically  
-- Attach tokens to API requests  
+- Receives donor submissions  
+- Normalizes + validates fields  
+- Maps fields to Constant Contact  
+- Adds donors to a CC list  
+- Stores phone numbers under `phone_numbers[]`  
+- Manages Partner API authentication  
+- Logs everything  
+- Returns structured JSON  
 
-### 🔜 Create or update contacts  
-Using:
+## Location Worker
 
-```
-POST /v3/contacts/sign_up_form
-```
-
-### 🔜 Add metadata fields  
-Including:
-
-- Bin ID  
-- Plaza name  
-- City/state  
-
-### 🔜 Add donors to lists or segments  
-For targeted marketing.
+- Receives staff submissions  
+- Immediately returns 200 OK  
+- Forwards payload to Google Apps Script  
+- Logs inbound + outbound requests  
+- Returns structured JSON  
 
 ---
 
-## **🔐 Environment Variables**
+# 🚧 Future Enhancements (Donor Worker)
 
-The Worker uses Cloudflare environment variables for all sensitive values:
+- SMS opt‑in support (pending Constant Contact confirmation)  
+- Additional validation (phone formatting, email verification, etc.)  
+- Enhanced logging (structured logs + correlation IDs)  
+- Retry logic for transient Constant Contact errors  
 
-- `CC_API_KEY`  
+---
+
+# 🔐 Environment Variables
+
+Both Workers use Cloudflare environment variables for sensitive values:
+
+- `GOOGLE_SCRIPT_URL`  
 - `CC_CLIENT_ID`  
 - `CC_CLIENT_SECRET`  
-- `CC_REFRESH_TOKEN`  
-- `LOGGING_ENABLED` (optional)  
+- `CC_BASIC_AUTH`  
+- `CC_ACCOUNT_ID`  
+- `CC_STORE` (KV namespace)  
+- `LOGGING_ENABLED`  
 
-These values are **not** stored in the repo.
-
----
-
-## **🧪 Testing the Worker**
-
-You can test the Worker using:
-
-- Duda’s “Test Webhook” feature  
-- `curl` or Postman  
-- Cloudflare dashboard “Test” tab  
-
-Example test payload:
-
-```json
-[
-  { "field": "First Name", "value": "John" },
-  { "field": "Email", "value": "john@example.com" },
-  { "field": "bin_id", "value": "42754" },
-  { "field": "city_state", "value": "Yorktown Heights, NY" }
-]
-```
+These values are never stored in the repo.
 
 ---
 
-## **🛠 Error Handling**
+# 🧪 Testing the Workers
 
-The Worker returns:
+## Donor Worker
 
-- `200` — Success  
-- `400` — Missing or invalid fields  
-- `500` — Internal error  
+- Use Duda’s “Test Webhook”  
+- Use Postman or curl  
+- Check Cloudflare logs  
+- Validate Constant Contact contact creation  
+
+## Location Worker
+
+- Use Duda’s “Test Webhook”  
+- Confirm instant 200 OK  
+- Check Google Apps Script logs  
+- Verify new row creation  
+- Confirm QR + PDF generation  
+
+---
+
+# 🛠 Error Handling
+
+Both Workers return:
+
+- 200 — Success  
+- 400 — Missing or invalid fields (donor worker only)  
+- 500 — Internal error  
 
 All errors are logged for debugging.
 
 ---
 
-## **📚 Related Documentation**
+# 📚 Related Documentation
 
-- **overview.md**  
-- **architecture.md**  
-- **duda-integration.md**  
-- **google-sheets-automation.md**  
-- **constant-contact.md**  
-- **troubleshooting.md**  
+- New Location Onboarding  
+- Architecture Overview  
+- Duda Integration  
+- Google Sheets Automation  
+- Constant Contact Integration  
+- Troubleshooting

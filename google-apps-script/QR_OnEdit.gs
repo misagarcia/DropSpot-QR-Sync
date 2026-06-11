@@ -179,15 +179,24 @@ function generateTwoUpQRSheet(fileId, binNumber) {
 
   pdfFolder.createFile(pdfBlob);
 
-  // Email disabled for testing
-  /*
+  // 🔍 DYNAMIC EMAIL TARGETER: Pull the active email recipient directly from cell Z3
+  const targetSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Drop Spots List");
+  const fallbackEmail = "fail-safe@email-example.com"; // Your fail-safe email backup
+  
+  let dynamicEmail = targetSheet.getRange("Z3").getValue().toString().trim();
+  
+  // If cell Z3 is empty or accidentally cleared, fall back to your primary email automatically
+  if (!dynamicEmail || dynamicEmail.indexOf("@") === -1) {
+    dynamicEmail = fallbackEmail;
+  }
+
+  // 📩 EMAIL PIPELINE ENABLED (Now fully dynamic)
   MailApp.sendEmail({
-    to: "YOUR_EMAIL_HERE",
+    to: dynamicEmail,
     subject: `QR Code PRINT PDF for Bin ${binNumber}`,
-    body: `Here is the generated 2‑up QR code PDF for bin ${binNumber}.`,
+    body: `Here is the generated 2-up QR code PDF for bin ${binNumber} at ${safeName}.`,
     attachments: [pdfBlob]
   });
-  */
 
   DriveApp.getFileById(docId).setTrashed(true);
 

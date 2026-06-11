@@ -1,6 +1,6 @@
 # **DropSpot Automation Platform**
 
-The DropSpot Automation Platform is a complete end‑to‑end system designed to support a national clothing‑donation company that collects donated clothing through hundreds of DropSpot containers placed in shopping centers across the United States.  
+The DropSpot Automation Platform is a complete end‑to‑end system designed to support a national clothing‑donation company that collects donated clothing through hundreds of DropSpot containers placed in shopping centers across the United States.
 
 The goal of this system is simple but powerful:
 
@@ -8,45 +8,54 @@ The goal of this system is simple but powerful:
 
 Each DropSpot container displays a unique QR code that donors can scan after dropping off clothing. When scanned, the QR code takes the donor to a form where they can enter their information for a chance to win a prize (e.g., an Apple Watch or iPad). This incentive encourages donors to share their contact information so the company can keep them informed, build community, and grow its marketing list.
 
-To make this possible, the platform automates everything behind the scenes — QR generation, PDF creation, form processing, and contact syncing — so employees never need technical skills to manage new DropSpot locations.
+Behind the scenes, the platform automates everything — QR generation, PDF creation, form processing, contact syncing, and now **new DropSpot onboarding** — so employees never need technical skills to manage or expand the system.
 
 ---
 
-## **🚀 What’s New in v1.0.2 (May 28, 2026)**  
-The QR generation and print‑ready PDF workflow has been upgraded to support a **2‑up layout**, replacing the previous 6‑up format introduced in v1.0.1. This change aligns our output with the client’s existing poster and signage designs, which already allocate a fixed physical space for QR codes.
+# **🚀 What’s New in v1.1.0 (June 2026)**
 
-##### Highlights
-- New **2‑up print layout** (one QR per half‑page)
-- High‑resolution Cloudinary pipeline using a **1350×1350 frame**
-- Updated upscale target (**1225px**) for sharper print output
-- Improved text placement (`x_60, y_20`) for precise alignment
-- Sanitized filenames for consistent Drive organization:
-  - `QR_{binNumber}_{businessName}.png`
-  - `QR-Print_{binNumber}_{businessName}.pdf`
-- Batch generator (`generateAllQRCodesAndPDFs`) added for Day‑One onboarding of 100+ locations
-- Sensitive Cloudinary credentials removed from Apps Script for safe GitHub publishing
+Version **1.1.0** introduces the most complete and stable version of the DropSpot Automation Platform to date. This release includes:
 
-This update ensures our QR assets match the client’s design specifications and maintain consistent print quality across all signage.
+### **Major Features**
+- **New Location Onboarding Pipeline**  
+  (Duda → Cloudflare Worker → Google Apps Script)
+- **Constant Contact Donor Intake Integration**  
+  (Duda → Cloudflare Worker → Constant Contact)
+- **Updated QR generation engine** with new naming conventions
+- **Dynamic email routing** via cell `Z3`
+- **Improved Cloudinary processing pipeline**
+- **Full repository documentation overhaul**
+
+This is a **major feature release**, not a patch.
 
 ---
 
-## **📌 Why This System Exists**
+# **📌 Why This System Exists**
 
-The company operates hundreds of donation containers and continues to expand. Until now, they had **no way to know who was donating**, where donations were coming from, or how to build an ongoing relationship with donors.
+The company operates hundreds of donation containers and continues to expand. Until now, they had:
 
-This system solves that by:
+- No way to know who was donating  
+- No way to track donation locations  
+- No way to build donor relationships  
+- No safe way for staff to add new DropSpots  
+
+This system solves all of that by:
 
 - Giving each container a **unique QR code** tied to its location  
 - Capturing donor information through a simple form  
-- Automatically tagging each donor with the **bin ID**, **plaza name**, **city**, and **state**  
-- Sending donor data into **Constant Contact** for marketing  
-- Making it easy for non‑technical staff to add new DropSpots  
+- Automatically tagging each donor with:
+  - Bin ID  
+  - Plaza name  
+  - City & state  
+- Sending donor data into **Constant Contact**  
+- Allowing staff to add new DropSpots **without accessing Google Sheets**  
+- Eliminating the need for Google account access  
 
-The result is a fully automated donor‑capture pipeline that requires **zero engineering involvement** once deployed.
+The result is a fully automated donor‑capture and location‑onboarding platform that requires **zero engineering involvement** once deployed.
 
 ---
 
-## **🎯 How Donors Interact With the System**
+# **🎯 How Donors Interact With the System**
 
 1. Donor drops clothing into a DropSpot container  
 2. Donor sees signage with a QR code  
@@ -54,84 +63,171 @@ The result is a fully automated donor‑capture pipeline that requires **zero en
    - Bin ID  
    - Plaza name  
    - City & state  
-4. Donor enters only their name, email, and optional fields  
-5. Submission is sent to the Cloudflare Worker  
-6. Worker forwards the data to Constant Contact  
-7. Donor is entered into the prize drawing and added to the mailing list  
+4. Donor enters their name, email, and optional fields  
+5. Submission is sent to the Cloudflare Donor Worker  
+6. Worker sends the data to Constant Contact  
+7. Donor is added to the mailing list and prize drawing  
 
 The donor never sees the technical fields — everything is handled automatically.
 
 ---
 
-## **🏗 System Architecture Overview**
+# **🏗 System Architecture Overview**
 
-The platform is composed of four major subsystems:
-
-### **1. Google Sheets + Google Apps Script**
-- Acts as the control center for all DropSpot locations  
-- Staff enter:
-  - Bin ID  
-  - Shopping Plaza name  
-  - City & state  
-  - Google Maps pin URL  
-- Apps Script:
-  - Generates QR codes with embedded parameters  
-  - Sends QR to Cloudinary for branding  
-  - Creates print‑ready PDFs  
-  - Emails PDFs to the printing team  
-  - Saves assets to Google Drive  
-
-### **2. Cloudinary (Media Processing)**
-- Combines:
-  - Raw QR code  
-  - Branded border frame  
-  - Site ID text  
-- Returns a final composite QR image used in PDFs and signage  
-
-### **3. Cloudflare Worker (Form Processing API)**
-- Receives JSON payloads from the Duda website  
-- Normalizes and validates fields  
-- Sends contact data to Constant Contact  
-- Logs all activity  
-
-### **4. Constant Contact Integration**
-- Stores donor contact information  
-- Organizes contacts by sub‑account  
-- Enables marketing outreach  
+The platform now consists of **five major subsystems**:
 
 ---
 
-## **🔄 End-to-End Workflow**
+## **1. New Location Onboarding Pipeline (v1.1.0)**  
+**Purpose:** Add new DropSpot locations without touching Google Sheets.
 
-### **DropSpot Creation Workflow**
-1. Staff enters new DropSpot info into Google Sheets  
-2. Staff checks the “Generate” box  
+Flow:
+
+\`\`\`
+[Duda Staff Form]
+        ↓
+[Cloudflare Location Worker]
+        ↓
+[WebFormEndpoint.gs]
+        ↓
+[Spreadsheet Row Creation]
+        ↓
+[QR Generation Engine]
+        ↓
+[Email Delivery]
+\`\`\`
+
+Key features:
+
+- Creates new rows automatically  
+- Clones metadata from previous row  
+- Injects dynamic formulas  
+- Initializes checkbox trigger  
+- Generates QR + PDF  
+- Emails print‑ready assets  
+
+Full documentation:  
+**docs/new-location-onboarding.md**
+
+---
+
+## **2. Donor Intake Pipeline (v1.1.0)**  
+**Purpose:** Capture donor information and sync to Constant Contact.
+
+Flow:
+
+\`\`\`
+[QR Code]
+        ↓
+[Duda Donor Form]
+        ↓
+[Cloudflare Donor Worker]
+        ↓
+[Constant Contact API]
+        ↓
+[Contact Created + Added to List]
+\`\`\`
+
+Key features:
+
+- Normalizes donor data  
+- Validates required fields  
+- Adds donors to a Constant Contact list  
+- Stores phone numbers under `phone_numbers[]`  
+- Populates custom fields (bin ID, plaza, city/state, message)  
+- Uses Partner API JWT authentication with KV caching  
+
+**SMS Note:**  
+Constant Contact’s API currently **does not allow SMS channel activation**.  
+Phone numbers are stored, but SMS consent cannot be set via API.
+
+---
+
+## **3. Google Sheets + Google Apps Script**
+
+Acts as the backend database and automation engine.
+
+Apps Script handles:
+
+- QR generation  
+- Cloudinary transformation  
+- PDF creation  
+- Email delivery  
+- Drive storage  
+- Triggering workflows from the onboarding pipeline  
+
+Docs:  
+**docs/google-sheets-automation.md**
+
+---
+
+## **4. Cloudinary (Media Processing)**
+
+Used to generate branded, high‑resolution QR codes:
+
+- 1350×1350 frame  
+- 1225px QR upscale  
+- Site ID text overlay  
+- Final PNG output  
+
+Docs:  
+**docs/cloudinary.md**
+
+---
+
+## **5. Cloudflare Workers (API Layer)**
+
+Two Workers now exist:
+
+- **donor-worker.js** → Sends donor data to Constant Contact  
+- **location-worker.js** → Sends new location data to Apps Script  
+
+Both normalize payloads, prevent retry loops, and ensure reliable delivery.
+
+Docs:  
+**docs/cloudflare-worker-integration.md**
+
+---
+
+# **🔄 End-to-End Workflows**
+
+## **New Location Workflow (v1.1.0)**  
+1. Staff fills out the “Add New DropSpot” form  
+2. Cloudflare Worker receives and forwards the payload  
 3. Apps Script:
+   - Creates new row  
+   - Maps fields  
+   - Clones metadata  
+   - Injects formulas  
+   - Inserts and toggles checkbox  
+4. QR_OnEdit script:
    - Generates QR  
    - Sends to Cloudinary  
-   - Receives final branded QR  
-   - Creates PDF (now 2‑up layout)  
-   - Emails PDF to printing team  
-   - Saves assets to Drive  
+   - Creates 2‑up PDF  
+   - Emails PDF  
+5. Assets saved to Drive  
 
-### **Donor Submission Workflow**
+---
+
+## **Donor Submission Workflow**
 1. Donor scans QR  
-2. Form loads with hidden fields auto‑filled  
+2. Form loads with hidden fields  
 3. Donor submits  
 4. Cloudflare Worker:
    - Parses payload  
    - Validates fields  
    - Sends to Constant Contact  
-   - Logs request  
+5. Donor added to mailing list  
 
 ---
 
-## **📁 Repository Structure**
+# **📁 Repository Structure (Updated for v1.1.0)**
 
-```
+\`\`\`
 docs/
   overview.md
   architecture.md
+  new-location-onboarding.md
   cloudinary.md
   google-sheets-automation.md
   duda-integration.md
@@ -140,19 +236,21 @@ docs/
   future-upgrades.md
 
 cloudflare-worker/
-  worker.js
+  donor-worker.js
+  location-worker.js
 
 google-apps-script/
-  code.gs
+  WebFormEndpoint.gs
   QR_OnEdit.gs
+  code.gs
 
 version-history/
   CHANGELOG.md
-```
+\`\`\`
 
 ---
 
-## **🧭 Who Uses This System**
+# **🧭 Who Uses This System**
 
 ### **Internal Staff**
 - Add new DropSpot locations  
@@ -172,14 +270,41 @@ version-history/
 
 ---
 
-## **📄 License**
+# **🚧 Future Enhancements (Optional)**
+
+These are not required for v1.1.0 but may be added later:
+
+### **1. SMS Opt‑In + Verification**
+If Constant Contact enables SMS channel creation via API, we may add:
+
+- SMS consent capture  
+- SMS verification workflow  
+- SMS channel provisioning  
+
+### **2. Phone Number Normalization**
+- Auto‑format to E.164  
+- Validate number type (mobile vs landline)
+
+### **3. Enhanced Logging**
+- Structured logs  
+- Correlation IDs  
+- Error categorization  
+
+### **4. Retry Logic**
+- Automatic retry for transient CC API failures  
+
+### **5. Additional Custom Fields**
+- Donor metadata  
+- Marketing segmentation fields  
+
+---
+
+# **📄 License**
 Internal project — not licensed for public distribution.
 
 ---
 
-## **👥 Contributors**
+# **👥 Contributors**
 - Misa — Lead Developer  
 - Raul — Project Oversight  
 - Additional contributors as the team grows  
-
-## **📚 Documentation**
